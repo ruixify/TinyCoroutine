@@ -38,6 +38,12 @@ struct Task {
         }
     }
 
+    // 由于调度器接管了协程，所以如果协程自己析构之后
+    // 可能会导致调度器使用空指针
+    handle_type release() {
+        return std::exchange(coro, nullptr);
+    }
+
     // 定义协程的resume行为
     bool resume() {
         if(coro && !coro.done()) {
