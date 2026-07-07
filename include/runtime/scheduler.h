@@ -24,9 +24,30 @@ struct Yield {
 
 class Scheduler {
 public:
+    // 调度器进行析构前，需要对就绪队列中未完成的协程进行销毁
+    ~Scheduler() {
+        while(!ready_queue_.empty()) {
+            auto handle = ready_queue_.front(); ready_queue_.pop();
+
+            if(handle) {
+                handle.destroy();
+            }
+        }
+    }
+
+    // 禁止拷贝构造和移动
+    Scheduler(const Scheduler&) = delete;
+    Scheduler& operator=(const Scheduler&) = delete;
+
+    Scheduler(Scheduler&&) = delete;
+    Scheduler& operator=(Scheduler&&) = delete;
+
+
     // 将一个准备好的协程放入就绪队列
     void schedule(std::coroutine_handle<> handle) {
-        ready_queue_.push(handle);
+        if(handle) {
+            ready_queue_.push(handle);
+        }
     }
 
     // 启动一个 Task
@@ -40,7 +61,12 @@ public:
         while(!ready_queue_.empty()) {
             auto handle = ready_queue_.front(); ready_queue_.pop();
 
-            if(!handle || handle.done()) {
+            if(!handle) {
+                continue;
+            }
+
+            if(handle.done()) {
+                handle.destroy();
                 continue;
             }
 
