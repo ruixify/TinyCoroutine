@@ -54,18 +54,14 @@ int create_listen_socket(int port) {
     return listen_fd;
 }
 
+
 Task handle_client(Event_loop& loop, int client_fd) {
     char buf[1024];
 
     while(true) {
         co_await loop.read(client_fd);
 
-        int n = read(client_fd, buf, sizeof(buf));
-
-        if(n == 0) {
-            std::cout << "client closed" << std::endl;
-            break;
-        }
+        ssize_t n = read(client_fd, buf, sizeof(buf));
 
         if(n == -1) {
             if(errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -74,8 +70,11 @@ Task handle_client(Event_loop& loop, int client_fd) {
 
             std::cout << "read error" << std::endl;
             break;
+        } else if(n > 0) {
+            printf("%s\n", buf);
+        } else {
+            printf("client closed\n");
         }
-        printf("%s\n", buf);
 
         co_await loop.write(client_fd);
         char* data = "i am server.";
@@ -133,7 +132,7 @@ int main() {
 
     sc.spawn(accept_loop(loop, sc, listen_fd));
 
-    std::cout << "echo server listening on 127.0.0.1:1234" << std::endl;
+    std::cout << "server listening on 127.0.0.1:1234" << std::endl;
 
     loop.run();
 

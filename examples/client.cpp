@@ -67,17 +67,16 @@ Task handle_server(Event_loop& loop, int fd) {
 
         ssize_t n = read(fd, buf, sizeof(buf));
 
-        if(n == 0) {
-            std::cout << "server closed" << std::endl;
-            break;
-        } else if(n == -1) {
+        if(n == -1) {
             if(errno == EAGAIN || errno == EWOULDBLOCK) {
                 continue;
             }
             printf("read error\n");
             break;
-        } else {
+        } else if(n > 0){
             printf("%s\n", buf);
+        } else {
+            printf("server closed\n");
         }
     }
 }
