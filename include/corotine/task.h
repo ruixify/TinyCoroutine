@@ -59,8 +59,22 @@ struct Task {
         return !coro || coro.done();
     }
 
+    bool await_ready() {
+        return !coro || coro.done();
+    }
+
+    std::coroutine_handle<> await_suspend(std::coroutine_handle<> parent) {
+        coro.promise().continuation = parent;
+        return coro;
+    }
+
+    void await_resume() const noexcept {}
+
+
     // 完善定义承诺对象
     struct promise_type {
+        std::coroutine_handle<> continuation{};
+
         // 创建并返回协程对象
         Task get_return_object() {
             return Task {
@@ -70,8 +84,27 @@ struct Task {
 
         // 定义协程创建时的行为
         std::suspend_always initial_suspend() { return {}; }
+        
+        struct FinalAwaiter {
+            bool await_ready() noexcept {
+                return false;
+            }
+
+            std::coroutine_handle<> await_suspend(handle_type h) noexcept {
+                auto continuation = h.promise().continuation;
+
+                if(continuation) {
+                    return continuation;
+                }
+
+                return std::noop_coroutine();
+            }
+
+            void await_resume() noexcept {}
+        };
+
         // 定义协程结束时的行为
-        std::suspend_always final_suspend() noexcept { return {}; }
+        FinalAwaiter final_suspend() noexcept { return {}; }
 
         // 处理 co_return 
         // 由于当前Task不返回任何值，所以为 return_void
